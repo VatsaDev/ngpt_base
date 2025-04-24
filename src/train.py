@@ -23,15 +23,15 @@ from model import Transformer
 
 # --- hyperparams ---
 
-batch_size = 64
-block_size = 128 # ctx_len
-eval_interval = 20
-grad_accum_steps = 4  # Num microbatches
+batch_size = 8
+block_size = 1024 # ctx_len
+eval_interval = 10
+grad_accum_steps = 50  # Num microbatches
 
 lr = 1e-3
 min_lr = 1e-4
 
-max_iters = 200
+max_iters = 1000
 eval_iters = 20
 warmup_iters = 10 # Note: CosineAnnealingLR doesn't use warmup_iters directly in this setup, but kept for potential future use or reference
 
@@ -49,7 +49,7 @@ max_grad_norm = 1.0  # Grad clipping threshold
 resume = False
 resume_checkpoint = "checkpoints/iM3C8i_check_100.pt" # Example checkpoint
 
-data_dir = "shakespeare" # Assumes data prepared in the new format is here
+data_dir = "fineweb" # Assumes data prepared in the new format is here
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # model.config['device'] = device # model.config likely doesn't need device, model is moved later
@@ -58,12 +58,9 @@ scaler = amp.GradScaler(enabled=(device == 'cuda'))  # GradScaler for mixed prec
 
 dtype = torch.float32 # Default dtype
 if torch.cuda.is_available():
-    if torch.cuda.is_bf16_supported():
-        dtype = torch.bfloat16
-    else:
-        dtype = torch.float16
+    dtype = torch.float16
 
-ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torch.float16}[str(dtype)]
+ptdtype = torch.float16
 ctx = torch.amp.autocast(device_type=device, dtype=ptdtype, enabled=(device=='cuda'))
 print(f"Using device: {device}, dtype: {dtype}")
 
@@ -214,8 +211,8 @@ def create_data_generator(filename_pattern: str, batch_size: int, block_size: in
 
 
 # Create data generators for train and val
-train_data_pattern = os.path.join("data", data_dir, f"{data_dir}_train_*.bin")
-val_data_pattern = os.path.join("data", data_dir, f"{data_dir}_val_*.bin")
+train_data_pattern = os.path.join("data", data_dir+"100B", f"{data_dir}_train_*.bin")
+val_data_pattern = os.path.join("data", data_dir+"100B", f"{data_dir}_val_*.bin")
 
 # Note: The provided distributed_data_generator yields one batch element at a time.
 # The original get_batch yielded a full batch. Let's adapt the generator
@@ -398,7 +395,7 @@ for iter_num in range(start_iter, max_iters + 1):
         prev_time = time_n
 
         # MFU calculation - use original model 'm' and its config
-        mfu = m.estimate_mfu(p, batch_size * grad_accum_steps, dt) if hasattr(m, 'estimate_mfu') else 0.0
+        mfu = m.estimate_mfu(block_size * batch_size * grad_accum_steps, dt) if hasattr(m, 'estimate_mfu') else 0.0
 
         print(f"step: {iter_num}, train loss: {losses['train']:.4f}, val loss: {val_loss:.4f}, lr: {current_lr:.6f}, elapsed: {elapsed/60:.2f} min, MFU: {mfu*100:.2f}%")
 
