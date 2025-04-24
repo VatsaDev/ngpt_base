@@ -25,14 +25,14 @@ from model import Transformer
 
 batch_size = 2
 block_size = 1024 # ctx_len
-eval_interval = 10
+eval_interval = 20
 grad_accum_steps = 8  # Num microbatches
 
 lr = 1e-3
 min_lr = 1e-4
 
 max_iters = 6000
-eval_iters = 50
+eval_iters = 20
 warmup_iters = 10 # Note: CosineAnnealingLR doesn't use warmup_iters directly in this setup, but kept for potential future use or reference
 
 train_losses_history = []
