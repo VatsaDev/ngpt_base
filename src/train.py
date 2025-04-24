@@ -23,10 +23,10 @@ from model import Transformer
 
 # --- hyperparams ---
 
-batch_size = 8
+batch_size = 2
 block_size = 1024 # ctx_len
 eval_interval = 10
-grad_accum_steps = 50  # Num microbatches
+grad_accum_steps = 8  # Num microbatches
 
 lr = 1e-3
 min_lr = 1e-4
@@ -407,7 +407,7 @@ for iter_num in range(start_iter, max_iters + 1):
              print("Warning: model does not have a .generate() method. Skipping text generation.")
 
         # --- Checkpointing ---
-        if iter_num > 0: # Don't save checkpoint at step 0 if not resuming
+        if iter_num > 0 and val_loss < 3.28: # Don't save checkpoint at step 0 if not resuming
             checkpoint = {
                 'model': m.state_dict(), # Save original model state dict
                 'optimizer': optimizer.state_dict(),
